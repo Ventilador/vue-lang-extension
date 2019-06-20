@@ -1,0 +1,24 @@
+import { LanguageService, FormatCodeSettings, UserPreferences, CodeFixAction } from "typescript/lib/tsserverlibrary";
+import { Utils } from "../cache";
+import { enter, exit, getFileName, Mappers, } from "../transformers";
+export function getCodeFixesAtPositionFactory(
+    lang: LanguageService,
+    { isVueFile, synchronize, calculatePosition, toTsPath }: Utils,
+    { outCodeFixAction }: Mappers
+): LanguageService['getCodeFixesAtPosition'] {
+    return function (fileName: string, start: number, end: number, errorCodes: ReadonlyArray<number>, formatOptions: FormatCodeSettings, preferences: UserPreferences): ReadonlyArray<CodeFixAction> {
+        if (isVueFile(fileName)) {
+            synchronize(fileName);
+            const newFileName = toTsPath(fileName);
+            const newStart = calculatePosition(fileName, start, false);
+            const newEnd = calculatePosition(fileName, end, false);
+            const result = lang.getCodeFixesAtPosition(newFileName, newStart, newEnd, errorCodes, formatOptions, preferences);
+            if (result.length) {
+                debugger;
+                return result.map(outCodeFixAction, fileName);
+            }
+        }
+
+        return lang.getCodeFixesAtPosition(fileName, start, end, errorCodes, formatOptions, preferences);
+    }
+}

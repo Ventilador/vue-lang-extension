@@ -1,0 +1,24 @@
+{
+    "extends": "../tsconfig.base.json",
+    "compilerOptions": {
+        "strict": true,
+        "strictBindCallApply": true,
+        "outDir": "./dist",
+        "rootDir": "./src",
+        "tsBuildInfoFile": "./dist/tsbuild.info",
+        "baseUrl": "./",
+        "paths": {
+            "@vue-lang/serialization/*": [
+                "../serialization/src/*"
+            ]
+        }
+    },
+    "include": [
+        "src/**/*.ts"
+    ],
+    "references": [
+        {
+            "path": "../serialization"
+        }
+    ]
+}

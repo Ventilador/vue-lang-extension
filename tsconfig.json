@@ -1,0 +1,22 @@
+{
+    "compilerOptions": {
+        "noEmit": true
+    },
+    "references": [
+        {
+            "path": "extension"
+        },
+        {
+            "path": "plugin"
+        },
+        {
+            "path": "bin"
+        },
+        {
+            "path": "serialization"
+        },
+        {
+            "path": "ts-shared"
+        }
+    ]
+}

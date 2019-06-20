@@ -1,0 +1,23 @@
+import { LanguageService, TextSpan, ClassifiedSpan } from "typescript/lib/tsserverlibrary";
+import { Utils } from "./../cache";
+import { Mappers } from "./../transformers";
+export function getSyntacticClassificationsFactory(
+    lang: LanguageService,
+    { isVueFile, synchronize, toTsPath }: Utils,
+    { inTextSpan, outClassifiedSpan }: Mappers
+): LanguageService['getSyntacticClassifications'] {
+    return function (fileName: string, span: TextSpan): ClassifiedSpan[] {
+        if (isVueFile(fileName)) {
+            synchronize(fileName);
+            const newFileName = toTsPath(fileName);
+            const newSpan = inTextSpan(fileName, span);
+            const result = lang.getSyntacticClassifications(newFileName, newSpan);
+            if (result.length) {
+                debugger;
+                return result.map(outClassifiedSpan, fileName);
+            }
+        }
+
+        return lang.getSyntacticClassifications(fileName, span);
+    }
+}

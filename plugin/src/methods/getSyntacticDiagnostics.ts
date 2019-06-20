@@ -1,0 +1,23 @@
+import { LanguageService, DiagnosticWithLocation } from "typescript/lib/tsserverlibrary";
+import { Utils } from "../cache";
+import { enter, exit, getFileName, Mappers, } from "../transformers";
+export function getSyntacticDiagnosticsFactory(
+    lang: LanguageService,
+    { isVueFile, synchronize, toTsPath }: Utils,
+    { outDiagnosticWithLocation }: Mappers
+): LanguageService['getSyntacticDiagnostics'] {
+    return function (fileName: string): DiagnosticWithLocation[] {
+        if (isVueFile(fileName)) {
+            synchronize(fileName);
+            const result = lang.getSyntacticDiagnostics(toTsPath(fileName));
+            if (result.length) {
+                debugger;
+                return result.map(outDiagnosticWithLocation, fileName);
+            }
+            return result;
+        }
+
+
+        return lang.getSyntacticDiagnostics(fileName);
+    }
+}

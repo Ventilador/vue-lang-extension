@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "noEmitOnError": false,
+        "diagnostics": false,
+        "skipDefaultLibCheck": true,
+        "skipLibCheck": true,
+        "noEmit": true,
+        "sourceMap": true,
+        "target": "es5",
+        "composite": true,
+        "module": "commonjs",
+        "tsBuildInfoFile": "../node_modules/tsconfig.info"
+    },
+    "include": [
+        "./**/*.ts"
+    ]
+}
