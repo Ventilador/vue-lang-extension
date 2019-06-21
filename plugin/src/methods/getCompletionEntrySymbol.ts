@@ -7,13 +7,13 @@ export function getCompletionEntrySymbolFactory(
     _: Mappers
 ): LanguageService['getCompletionEntrySymbol'] {
     return function (fileName: string, position: number, name: string, source: string | undefined): Symbol | undefined {
+        debugger;
         if (isVueFile(fileName)) {
             synchronize(fileName);
             const newFileName = toTsPath(fileName);
             const newPosition = calculatePosition(fileName, position, false);
             const result = lang.getCompletionEntrySymbol(newFileName, newPosition, name, source);
             if (result) {
-                debugger;
                 return result;
             }
             return result;

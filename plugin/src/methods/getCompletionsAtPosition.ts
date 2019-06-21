@@ -13,7 +13,6 @@ export function getCompletionsAtPositionFactory(
             const newPosition = calculatePosition(fileName, position, false);
             const result = lang.getCompletionsAtPosition(newFileName, newPosition, options);
             if (result) {
-                debugger;
                 return outWithMetadataCompletionInfo(fileName, result);
             }
             return result;

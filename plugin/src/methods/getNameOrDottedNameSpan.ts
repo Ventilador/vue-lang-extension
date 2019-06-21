@@ -7,6 +7,7 @@ export function getNameOrDottedNameSpanFactory(
     { outTextSpan }: Mappers
 ): LanguageService['getNameOrDottedNameSpan'] {
     return function (fileName: string, startPos: number, endPos: number): TextSpan | undefined {
+        debugger;
         if (isVueFile(fileName)) {
             synchronize(fileName);
             const newFileName = toTsPath(fileName);
@@ -15,7 +16,6 @@ export function getNameOrDottedNameSpanFactory(
             const result = lang.getNameOrDottedNameSpan(newFileName, newStart, newEnd);
             if (result) {
 
-                debugger;
                 return outTextSpan(fileName, result);
             }
         }

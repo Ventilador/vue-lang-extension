@@ -1,9 +1,5 @@
-export function parse(text: string): { content: string, offset: number } {
-    const result = parseContent(text);
-    return {
-        content: result.parsed,
-        offset: result.start,
-    };
+export function parse(text: string) {
+    return parseContent(text);
 }
 
 

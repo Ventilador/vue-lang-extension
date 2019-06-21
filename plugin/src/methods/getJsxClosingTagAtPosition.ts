@@ -13,7 +13,6 @@ export function getJsxClosingTagAtPositionFactory(
             const newPosition = calculatePosition(fileName, position, false);
             const result = lang.getJsxClosingTagAtPosition(newFileName, newPosition);
             if (result) {
-                debugger;
                 return outJsxClosingTagInfo(fileName, result);
             }
         }

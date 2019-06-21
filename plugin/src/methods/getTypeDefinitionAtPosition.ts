@@ -13,7 +13,6 @@ export function getTypeDefinitionAtPositionFactory(
             const newPosition = calculatePosition(fileName, position, false);
             const result = lang.getTypeDefinitionAtPosition(newFileName, newPosition);
             if (result && result.length) {
-                debugger;
                 return result.map(outDefinitionInfo, fileName);
             }
             return result;

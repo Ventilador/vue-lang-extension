@@ -11,7 +11,6 @@ export function getSyntacticDiagnosticsFactory(
             synchronize(fileName);
             const result = lang.getSyntacticDiagnostics(toTsPath(fileName));
             if (result.length) {
-                debugger;
                 return result.map(outDiagnosticWithLocation, fileName);
             }
             return result;

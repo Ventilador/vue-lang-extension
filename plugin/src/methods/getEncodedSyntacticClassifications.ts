@@ -7,13 +7,13 @@ export function getEncodedSyntacticClassificationsFactory(
     { inTextSpan, outClassifications }: Mappers
 ): LanguageService['getEncodedSyntacticClassifications'] {
     return function (fileName: string, span: TextSpan): Classifications {
+        debugger;
         if (isVueFile(fileName)) {
             synchronize(fileName);
             const newFileName = toTsPath(fileName);
             const newSpan = inTextSpan(fileName, span);
             const result = lang.getEncodedSyntacticClassifications(newFileName, newSpan);
             if (result) {
-                debugger;
                 return outClassifications(fileName, result);
             }
         }

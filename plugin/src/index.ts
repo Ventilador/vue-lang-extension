@@ -1,5 +1,5 @@
-import { server, LanguageService } from 'typescript/lib/tsserverlibrary';
-import { createUtils } from "./cache";
+import { server, LanguageService, sys } from 'typescript/lib/tsserverlibrary';
+import { createUtils, Utils } from "./cache";
 import { findReferencesFactory } from "./methods/findReferences";
 import { getDefinitionAtPositionFactory } from "./methods/getDefinitionAtPosition";
 import { getSyntacticDiagnosticsFactory } from "./methods/getSyntacticDiagnostics";
@@ -48,14 +48,22 @@ import { organizeImportsFactory } from './methods/organizeImports';
 import { toLineColumnOffsetFactory } from './methods/toLineColumnOffset';
 import { applyCodeActionCommandFactory } from './methods/applyCodeActionCommand';
 import { createMappers } from './transformers';
+import { getNavigationBarItemsFactory } from './methods/getNavigationBarItems';
+import { join } from 'path';
+import { getNonBoundSourceFileFactory } from './methods/getNonBoundSourceFile';
+import { getSourceMapperFactory } from './methods/getSourceMapper';
+import { wrapFsMethods } from './createFsMethodWrappers';
+let cachedPlugin: server.PluginModule | undefined;
 
 export = function init(): server.PluginModule {
-    return {
+    return cachedPlugin = {
         create: function (info: server.PluginCreateInfo): LanguageService {
+            const utils = createUtils(info);
+            wrapFsMethods(info.serverHost, utils);
+            wrapFsMethods(info.languageServiceHost, utils);
+            const mappers = createMappers(utils);
             info.project.addRoot
             const { languageService } = info;
-            const utils = createUtils(info);
-            const mappers = createMappers(utils);
             return {
                 applyCodeActionCommand: applyCodeActionCommandFactory(languageService, utils, mappers),
                 findReferences: findReferencesFactory(languageService, utils, mappers),
@@ -104,12 +112,29 @@ export = function init(): server.PluginModule {
                 isValidBraceCompletionAtPosition: isValidBraceCompletionAtPositionFactory(languageService, utils, mappers),
                 organizeImports: organizeImportsFactory(languageService, utils, mappers),
                 toLineColumnOffset: toLineColumnOffsetFactory(languageService, utils, mappers),
-                cleanupSemanticCache: languageService.cleanupSemanticCache,
-                dispose: languageService.dispose,
-                getCompilerOptionsDiagnostics: languageService.getCompilerOptionsDiagnostics,
-                getNavigationBarItems: languageService.getNavigationBarItems,
-                getProgram: languageService.getProgram,
-            };
+                getNavigationBarItems: getNavigationBarItemsFactory(languageService, utils, mappers),
+                getNonBoundSourceFile: getNonBoundSourceFileFactory(languageService, utils, mappers),
+                getSourceMapper: getSourceMapperFactory(languageService, utils, mappers),
+                getCompilerOptionsDiagnostics: languageService.getCompilerOptionsDiagnostics.bind(languageService),
+                cleanupSemanticCache: languageService.cleanupSemanticCache.bind(languageService),
+                dispose: languageService.dispose.bind(languageService),
+                getProgram: languageService.getProgram.bind(languageService),
+            } as any;
+        },
+        getExternalFiles(proj: server.Project) {
+            const curDir = proj.getCurrentDirectory();
+            const result = sys.readDirectory(curDir, ['.vue'], [], [join(curDir, '**/*.vue')]);
+            const found = new Set(proj.getFileNames().filter(i => i.endsWith('.vue')));
+            result.forEach(i => {
+                const path = server.asNormalizedPath(i);
+                if (found.has(path)) {
+                    return;
+                }
+
+                proj.addMissingFileRoot(path);
+            })
+            // return result.filter(i => i.endsWith('.vue.ts'));
+            return [];
         }
     }
 }

@@ -13,7 +13,6 @@ export function getRenameInfoFactory(
             const newPosition = calculatePosition(fileName, position, false);
             const result = lang.getRenameInfo(newFileName, newPosition, options);
             if (result) {
-                debugger;
                 return outRenameInfo(fileName, result);
             }
 

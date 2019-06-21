@@ -1,5 +1,5 @@
 import { Utils } from './cache';
-import { LanguageService, ReferencedSymbol, ReferenceEntry, DefinitionInfo, DiagnosticWithLocation, RenameLocation, TextRange, ApplicableRefactorInfo, TextSpan, CodeFixAction, CombinedCodeFixScope, CombinedCodeActions, CompletionEntryDetails, Symbol, WithMetadata, CompletionInfo, DefinitionInfoAndBoundSpan, TextInsertion, DocumentHighlights, TextChange, RefactorEditInfo, Classifications, FileTextChanges, ImplementationLocation, JsxClosingTagInfo, NavigateToItem, NavigationBarItem, NavigationTree, OutliningSpan, QuickInfo, RenameInfo, RenameInfoSuccess, RenameInfoFailure, ClassifiedSpan, Diagnostic, SignatureHelpItems, SelectionRange, TodoComment, LineAndCharacter } from 'typescript/lib/tsserverlibrary';
+import { LanguageService, ReferencedSymbol, ReferenceEntry, DefinitionInfo, DiagnosticWithLocation, RenameLocation, TextRange, ApplicableRefactorInfo, TextSpan, CodeFixAction, CombinedCodeFixScope, CombinedCodeActions, CompletionEntryDetails, Symbol, WithMetadata, CompletionInfo, DefinitionInfoAndBoundSpan, TextInsertion, DocumentHighlights, TextChange, RefactorEditInfo, Classifications, FileTextChanges, ImplementationLocation, JsxClosingTagInfo, NavigateToItem, NavigationBarItem, NavigationTree, OutliningSpan, QuickInfo, RenameInfo, RenameInfoSuccess, RenameInfoFailure, ClassifiedSpan, Diagnostic, SignatureHelpItems, SelectionRange, TodoComment, LineAndCharacter, ReferencedSymbolDefinitionInfo, CompletionEntry, CodeAction } from 'typescript/lib/tsserverlibrary';
 export const enter: Record<ArgumentName, EnterFunction> = {};
 export const exit: Record<MethodName, ExitFunction> = {};
 export type ArgumentName = string;
@@ -9,6 +9,12 @@ export type ExitFunction = (methodName: MethodName, calculatePosition: (fileName
 export function getFileName(methodName: string, ...args: any[]) {
     return args[0];
 }
+/**
+ * Make all properties in T readonly
+ */
+export type Mutable<T> = {
+    -readonly [P in keyof T]: T[P];
+};
 export type Callable<T, K> = {
     (file: string, value: T): K;
     (this: string, value: T, index: number, arr: T[]): K;
@@ -88,10 +94,16 @@ export interface Mappers {
     outNavigateToItem(this: string, value: NavigateToItem, index: number, arr: readonly NavigateToItem[]): NavigateToItem;
     outClassifications(file: string, value: Classifications): Classifications
     outClassifications(this: string, value: Classifications, index: number, arr: readonly Classifications[]): Classifications
+    outCompletionEntry(file: string, val: CompletionEntry): CompletionEntry;
+    outCompletionEntry(this: string, val: CompletionEntry, index: number, arr: readonly CompletionEntry[]): CompletionEntry;
+    outCodeAction(file: string, val: CodeAction): CodeAction
+    outCodeAction(this: string, val: CodeAction, index: number, arr: readonly CodeAction[]): CodeAction
 }
 
-export function createMappers({ fromTsPath, calculatePosition, isVueFile, synchronize, toTsPath, wasVueFile }: Utils): Mappers {
+export function createMappers({ fromTsPath, calculatePosition, synchronize, wasVueFile, getLineAndChar, isVueFile, toTsPath }: Utils): Mappers {
     const mappers: Mappers = {
+        outCodeAction: wrapper(outCodeAction),
+        outCompletionEntry: wrapper(outCompletionEntry),
         outImplementationLocation: wrapper(outImplementationLocation),
         outFileTextChanges: wrapper(outFileTextChanges),
         inTextSpan: wrapper(inTextSpan),
@@ -135,10 +147,15 @@ export function createMappers({ fromTsPath, calculatePosition, isVueFile, synchr
 
     function wrapper<T, K>(fn: (file: string, value: T) => K): Callable<T, K> {
         return function (this: string, file: any, val: T) {
-            if (arguments.length > 2) {
-                return fn(this, file);
-            } else {
-                return fn(file, val);
+            try {
+                if (arguments.length > 2) {
+                    return fn(this, file);
+                } else {
+                    return fn(file, val);
+                }
+            } catch (err) {
+                debugger;
+                throw err;
             }
         } as any
     }
@@ -153,35 +170,15 @@ export function createMappers({ fromTsPath, calculatePosition, isVueFile, synchr
             textSpan: val.textSpan,
         }
     }
-    function outFileTextChanges(file: string, { fileName, isNewFile, textChanges }: FileTextChanges): FileTextChanges {
-        if (wasVueFile(file)) {
-            debugger;
-            file = fromTsPath(file);
-            synchronize(file);
-            textChanges = textChanges.map(change => outTextChange(file, change))
-        }
-        return { fileName, isNewFile, textChanges };
-    }
+
     function inTextSpan(file: string, val: TextSpan): TextSpan {
         return {
             length: val.length,
             start: val.start,
         }
     }
-    function outRefactorEditInfo(file: string, val: RefactorEditInfo): RefactorEditInfo {
-        return {
-            commands: val.commands,
-            edits: val.edits,
-            renameFilename: val.renameFilename,
-            renameLocation: val.renameLocation,
-        }
-    }
-    function outTextChange(file: string, val: TextChange): TextChange {
-        return {
-            newText: val.newText,
-            span: val.span,
-        }
-    }
+
+
     function outDocumentHighlights(file: string, val: DocumentHighlights): DocumentHighlights {
         return {
             fileName: file,
@@ -207,22 +204,18 @@ export function createMappers({ fromTsPath, calculatePosition, isVueFile, synchr
     }
     function outDefinitionInfoAndBoundSpan(file: string, val: DefinitionInfoAndBoundSpan): DefinitionInfoAndBoundSpan {
         return {
-            definitions: val.definitions,
-            textSpan: val.textSpan,
+            definitions: val.definitions && val.definitions.map(mappers.outDefinitionInfo, file),
+            textSpan: outTextSpan(file, val.textSpan),
         }
     }
-    function outWithMetadataCompletionInfo(file: string, val: WithMetadata<CompletionInfo>): WithMetadata<CompletionInfo> {
-        return {
-            entries: val.entries,
-            isGlobalCompletion: val.isGlobalCompletion,
-            isMemberCompletion: val.isMemberCompletion,
-            isNewIdentifierLocation: val.isNewIdentifierLocation,
-            metadata: val.metadata,
-        }
+    function outCodeAction(file: string, val: CodeAction): CodeAction {
+        return Object.assign(outCombinedCodeActions(file, val) as any, {
+            description: val.description
+        })
     }
     function outCompletionEntryDetails(file: string, val: CompletionEntryDetails): CompletionEntryDetails {
         return {
-            codeActions: val.codeActions,
+            codeActions: val.codeActions ? val.codeActions.map(mappers.outCodeAction, file) : undefined,
             displayParts: val.displayParts,
             documentation: val.documentation,
             kind: val.kind,
@@ -234,29 +227,22 @@ export function createMappers({ fromTsPath, calculatePosition, isVueFile, synchr
     }
     function outCombinedCodeActions(file: string, val: CombinedCodeActions): CombinedCodeActions {
         return {
-            changes: val.changes,
+            changes: val.changes.map(mappers.outFileTextChanges, file),
             commands: val.commands
         }
     }
     function inCombinedCodeFixScope(file: string, val: CombinedCodeFixScope): CombinedCodeFixScope {
-        return {
-            fileName: val.fileName,
-            type: val.type,
+        if (isVueFile(file)) {
+            return {
+                fileName: toTsPath(val.fileName),
+                type: val.type,
+            }
         }
+
+        return val;
     }
 
-    function outCodeFixAction(file: string, val: CodeFixAction): CodeFixAction {
-        return {
-            changes: val.changes,
-            commands: val.commands,
-            description: val.description,
-            fixAllDescription: val.fixAllDescription,
-            fixId: val.fixId,
-            fixName: val.fixName,
 
-        }
-    }
-    
     function inNumberOrTextRange(file: string, val: number | TextRange): number | TextRange {
         if (typeof val === 'number') {
             return calculatePosition(file, val, false);
@@ -269,66 +255,13 @@ export function createMappers({ fromTsPath, calculatePosition, isVueFile, synchr
             pos: calculatePosition(file, val.pos, false),
         }
     }
-    function outRenameLocation(file: string, rename: RenameLocation): RenameLocation {
-        return {
-            fileName: rename.fileName,
-            originalFileName: rename.originalFileName,
-            originalTextSpan: rename.originalTextSpan,
-            prefixText: rename.prefixText,
-            suffixText: rename.suffixText,
-            textSpan: rename.textSpan,
-        }
-    }
 
 
-    function outDefinitionInfo(fileName: string, def: DefinitionInfo): DefinitionInfo {
-        return {
-            fileName: def.fileName,
-            kind: def.kind,
-            name: def.name,
-            originalFileName: def.originalFileName,
-            originalTextSpan: def.originalTextSpan,
-            textSpan: def.textSpan,
-            containerKind: def.containerKind,
-            containerName: def.containerName,
-        }
-    }
 
-
-    function outReferencedSymbol(fileName: string, symbol: ReferencedSymbol): ReferencedSymbol {
-        return {
-            definition: {
-                containerKind: symbol.definition.containerKind,
-                containerName: symbol.definition.containerName,
-                displayParts: symbol.definition.displayParts,
-                fileName: symbol.definition.fileName,
-                kind: symbol.definition.kind,
-                name: symbol.definition.name,
-                originalFileName: symbol.definition.originalFileName,
-                originalTextSpan: symbol.definition.originalTextSpan,
-                textSpan: symbol.definition.textSpan,
-            },
-            references: symbol.references.map(r => outReferenceEntry(fileName, r))
-        }
-    }
-
-    function outReferenceEntry(fileName: string, ref: ReferenceEntry): ReferenceEntry {
-        return {
-            fileName: ref.fileName,
-            isDefinition: ref.isDefinition,
-            isInString: ref.isInString,
-            isWriteAccess: ref.isWriteAccess,
-            originalFileName: ref.originalFileName,
-            originalTextSpan: ref.originalTextSpan,
-            textSpan: ref.textSpan,
-        }
-    }
 
     function outLineAndCharacter(file: string, val: LineAndCharacter): LineAndCharacter {
-        return {
-            character: val.character,
-            line: val.line,
-        }
+        return getLineAndChar(file, val);
+
     }
     function outTodoComment(file: string, val: TodoComment): TodoComment {
         return {
@@ -343,33 +276,14 @@ export function createMappers({ fromTsPath, calculatePosition, isVueFile, synchr
             textSpan: outTextSpan(file, val.textSpan)
         }
     }
-    function outSignatureHelpItems(file: string, val: SignatureHelpItems): SignatureHelpItems {
-        return {
-            applicableSpan: val.applicableSpan,
-            argumentCount: val.argumentCount,
-            argumentIndex: val.argumentIndex,
-            items: val.items,
-            selectedItemIndex: val.selectedItemIndex,
 
-        }
-    }
     function outClassifiedSpan(file: string, val: ClassifiedSpan): ClassifiedSpan {
         return {
             classificationType: val.classificationType,
             textSpan: val.textSpan,
         }
     }
-    function outRenameInfoSuccess(file: string, val: RenameInfoSuccess): RenameInfoSuccess {
-        return {
-            canRename: val.canRename,
-            displayName: val.displayName,
-            fileToRename: val.fileToRename,
-            fullDisplayName: val.fullDisplayName,
-            kind: val.kind,
-            kindModifiers: val.kindModifiers,
-            triggerSpan: val.triggerSpan,
-        }
-    }
+
     function outRenameInfoFail(file: string, val: RenameInfoFailure): RenameInfoFailure {
         return {
             canRename: val.canRename,
@@ -393,8 +307,6 @@ export function createMappers({ fromTsPath, calculatePosition, isVueFile, synchr
 
         }
     }
-
-
     function outNavigationBarItem(file: string, val: NavigationBarItem): NavigationBarItem {
         return {
             bolded: val.bolded,
@@ -433,15 +345,199 @@ export function createMappers({ fromTsPath, calculatePosition, isVueFile, synchr
         }
     }
     /***************************************************************************************************/
-    /                                           ready                                                   /
     /***************************************************************************************************/
-    function outApplicableRefactorInfo(file: string, val: ApplicableRefactorInfo): ApplicableRefactorInfo {
+    /***************************************************************************************************/
+    /***************************************************************************************************/
+    /***************************************************************************************************/
+    /*                                          READY                                                  */
+    /***************************************************************************************************/
+    /***************************************************************************************************/
+    /***************************************************************************************************/
+    /***************************************************************************************************/
+    /***************************************************************************************************/
+    function outRefactorEditInfo(file: string, val: RefactorEditInfo): RefactorEditInfo {
+        if (val.commands) {
+            debugger;
+            console.trace('outRefactorEditInfo->val.commands', val.commands);
+        }
+
         return {
-            actions: val.actions,
-            name: val.name,
+            commands: val.commands,
+            edits: val.edits.map(mappers.outFileTextChanges, file),
+            renameFilename: val.renameFilename && fromTsPath(val.renameFilename),
+            renameLocation: val.renameLocation && calculatePosition(file, val.renameLocation),
+        }
+    }
+    function outFileTextChanges(fileName: string, fileTextChanges: FileTextChanges): FileTextChanges {
+        if (wasVueFile(fileTextChanges.fileName)) {
+            fileName = fromTsPath(fileTextChanges.fileName);
+            synchronize(fileName);
+            return {
+                fileName: fileName,
+                isNewFile: fileTextChanges.isNewFile,
+                textChanges: fileTextChanges.textChanges.map(mappers.outTextChange, fileName)
+            }
+        }
+        return fileTextChanges;
+    }
+    function outTextChange(file: string, val: TextChange): TextChange {
+        return {
+            newText: val.newText,
+            span: outTextSpan(file, val.span),
+        }
+    }
+    function outSignatureHelpItems(file: string, val: SignatureHelpItems): SignatureHelpItems {
+        if (wasVueFile(file)) {
+            return {
+                applicableSpan: outTextSpan(fromTsPath(file), val.applicableSpan),
+                argumentCount: val.argumentCount,
+                argumentIndex: val.argumentIndex,
+                items: val.items,
+                selectedItemIndex: val.selectedItemIndex,
+
+            }
+        }
+
+        return val;
+    }
+    function outWithMetadataCompletionInfo(file: string, val: WithMetadata<CompletionInfo>): WithMetadata<CompletionInfo> {
+        if (val.metadata) {
+            debugger;
+            console.trace('outWithMetadataCompletionInfo->val.metadata:', val.metadata);
+        }
+        if (wasVueFile(file)) {
+            return {
+                entries: val.entries.map(mappers.outCompletionEntry, file),
+                isGlobalCompletion: val.isGlobalCompletion,
+                isMemberCompletion: val.isMemberCompletion,
+                isNewIdentifierLocation: val.isNewIdentifierLocation,
+                metadata: val.metadata,
+            }
+        }
+
+        return val;
+    }
+    function outCompletionEntry(file: string, val: CompletionEntry): CompletionEntry {
+        if (val.replacementSpan) {
+            return {
+                hasAction: val.hasAction,
+                insertText: val.insertText,
+                isRecommended: val.isRecommended,
+                kind: val.kind,
+                kindModifiers: val.kindModifiers,
+                name: val.name,
+                replacementSpan: outTextSpan(file, val.replacementSpan),
+                sortText: val.sortText,
+                source: val.source,
+            }
+        }
+
+        return val;
+    }
+    function outRenameInfoSuccess(file: string, val: RenameInfoSuccess): RenameInfoSuccess {
+        if (wasVueFile(file)) {
+            return {
+                canRename: val.canRename,
+                displayName: val.displayName,
+                fileToRename: val.fileToRename,
+                fullDisplayName: val.fullDisplayName,
+                kind: val.kind,
+                kindModifiers: val.kindModifiers,
+                triggerSpan: outTextSpan(file, val.triggerSpan),
+            }
+        }
+
+        return val;
+    }
+    function outRenameLocation(fileName: string, rename: RenameLocation): RenameLocation {
+        if (wasVueFile(rename.fileName)) {
+            const fileName = fromTsPath(rename.fileName);
+            return {
+                fileName: fileName,
+                originalFileName: rename.originalFileName,
+                originalTextSpan: rename.originalTextSpan,
+                prefixText: rename.prefixText,
+                suffixText: rename.suffixText,
+                textSpan: outTextSpan(fileName, rename.textSpan),
+            }
+        }
+
+        return rename;
+    }
+    function outReferencedSymbolDefinitionInfo(fileName: string, ref: ReferencedSymbolDefinitionInfo): ReferencedSymbolDefinitionInfo {
+        if (wasVueFile(ref.fileName)) {
+            fileName = fromTsPath(ref.fileName);
+            return {
+                fileName: fileName,
+                kind: ref.kind,
+                name: ref.name,
+                originalFileName: ref.originalFileName,
+                originalTextSpan: ref.originalTextSpan,
+                textSpan: outTextSpan(fileName, ref.textSpan),
+                containerKind: ref.containerKind,
+                containerName: ref.containerName,
+                displayParts: ref.displayParts,
+            }
+        }
+        return ref;
+    }
+
+    function outReferencedSymbol(fileName: string, symbol: ReferencedSymbol): ReferencedSymbol {
+        return {
+            definition: outReferencedSymbolDefinitionInfo(fileName, symbol.definition),
+            references: symbol.references.map(r => outReferenceEntry(fileName, r))
+        }
+    }
+
+    function outReferenceEntry(fileName: string, ref: ReferenceEntry): ReferenceEntry {
+        if (wasVueFile(ref.fileName)) {
+            fileName = fromTsPath(ref.fileName);
+            return {
+                fileName: fileName,
+                isDefinition: ref.isDefinition,
+                isInString: ref.isInString,
+                isWriteAccess: ref.isWriteAccess,
+                originalFileName: ref.originalFileName,
+                originalTextSpan: ref.originalTextSpan,
+                textSpan: outTextSpan(fileName, ref.textSpan),
+            }
+        }
+        return ref;
+    }
+    function outDefinitionInfo(fileName: string, def: DefinitionInfo): DefinitionInfo {
+        if (wasVueFile(def.fileName)) {
+            fileName = fromTsPath(def.fileName)
+            return {
+                fileName: fileName,
+                kind: def.kind,
+                name: def.name,
+                originalFileName: def.originalFileName,
+                originalTextSpan: def.originalTextSpan,
+                textSpan: outTextSpan(fileName, def.textSpan),
+                containerKind: def.containerKind,
+                containerName: def.containerName,
+            }
+        }
+        return def;
+    }
+    function outCodeFixAction(file: string, val: CodeFixAction): CodeFixAction {
+        if (val.commands) {
+            console.trace('outCodeFixAction', file, val.commands);
+            debugger;
+        }
+        return {
+            changes: val.changes.map(mappers.outFileTextChanges, file),
+            commands: val.commands,
             description: val.description,
-            inlineable: val.inlineable,
-        };
+            fixAllDescription: val.fixAllDescription,
+            fixId: val.fixId,
+            fixName: val.fixName,
+
+        }
+    }
+
+    function outApplicableRefactorInfo(file: string, val: ApplicableRefactorInfo): ApplicableRefactorInfo {
+        return val;
     }
     function outDiagnosticWithLocation(file: string, diag: DiagnosticWithLocation): DiagnosticWithLocation {
         return {

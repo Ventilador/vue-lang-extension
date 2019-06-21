@@ -8,13 +8,13 @@ export function getSemanticClassificationsFactory(
 
 ): LanguageService['getSemanticClassifications'] {
     return function (fileName: string, span: TextSpan): ClassifiedSpan[] {
+        debugger;
         if (isVueFile(fileName)) {
             synchronize(fileName);
             const newFileName = toTsPath(fileName);
             const newSpan = inTextSpan(fileName, span);
             const result = lang.getSemanticClassifications(newFileName, newSpan);
             if (result && result.length) {
-                debugger;
                 return result.map(outClassifiedSpan, fileName);
             }
         }

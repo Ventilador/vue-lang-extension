@@ -13,7 +13,6 @@ export function findRenameLocationsFactory(
             const newPosition = calculatePosition(fileName, position, false);
             const result = lang.findRenameLocations(newFileName, newPosition, findInStrings, findInComments, providePrefixAndSuffixTextForRename);
             if (result && result.length) {
-                debugger;
                 return result.map(outRenameLocation, fileName);
             }
 

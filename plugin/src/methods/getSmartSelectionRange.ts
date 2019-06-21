@@ -13,7 +13,6 @@ export function getSmartSelectionRangeFactory(
             const newPosition = calculatePosition(fileName, position, false);
             const result = lang.getSmartSelectionRange(newFileName, newPosition);
             if (result) {
-                debugger;
                 return outSelectionRange(fileName, result);
             }
             return result;

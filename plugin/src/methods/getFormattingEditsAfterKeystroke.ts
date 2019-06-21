@@ -7,13 +7,13 @@ export function getFormattingEditsAfterKeystrokeFactory(
     { outTextChange }: Mappers
 ): LanguageService['getFormattingEditsAfterKeystroke'] {
     return function (fileName: string, position: number, key: string, options: FormatCodeOptions | FormatCodeSettings): TextChange[] {
+        debugger;
         if (isVueFile(fileName)) {
             synchronize(fileName);
             const newFileName = toTsPath(fileName);
             const newPosition = calculatePosition(fileName, position, false);
             const result = lang.getFormattingEditsAfterKeystroke(newFileName, newPosition, key, options);
             if (result.length) {
-                debugger;
                 return result.map(outTextChange, fileName);
             }
 

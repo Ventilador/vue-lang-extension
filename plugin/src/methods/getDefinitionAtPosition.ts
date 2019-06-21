@@ -14,7 +14,6 @@ export function getDefinitionAtPositionFactory(
             const newPosition = calculatePosition(fileName, position, false);
             const result = lang.getDefinitionAtPosition(newFileName, newPosition);
             if (result && result.length) {
-                debugger;
                 return result && result.map(outDefinitionInfo, fileName);
             }
             return result;

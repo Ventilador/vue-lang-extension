@@ -7,13 +7,13 @@ export function getBraceMatchingAtPositionFactory(
     { outTextSpan }: Mappers
 ): LanguageService['getBraceMatchingAtPosition'] {
     return function (fileName: string, position: number): TextSpan[] {
+        debugger;
         if (isVueFile(fileName)) {
             synchronize(fileName);
             const newFileName = toTsPath(fileName);
             const newPosition = calculatePosition(fileName, position, false);
             const result = lang.getBraceMatchingAtPosition(newFileName, newPosition);
             if (result.length) {
-                debugger;
                 return result.map(outTextSpan, fileName);
             }
             return result;

@@ -13,7 +13,6 @@ export function getDocCommentTemplateAtPositionFactory(
             const newPosition = calculatePosition(fileName, position, false);
             const result = lang.getDocCommentTemplateAtPosition(newFileName, newPosition);
             if (result) {
-                debugger;
                 return outTextInsertion(fileName, result);
             }
             return result;

@@ -13,7 +13,6 @@ export function getCompletionEntryDetailsFactory(
             const newPosition = calculatePosition(fileName, position, false);
             const result = lang.getCompletionEntryDetails(newFileName, newPosition, name, formatOptions, source, preferences);
             if (result) {
-                debugger;
                 return outCompletionEntryDetails(fileName, result);
             }
             return result;

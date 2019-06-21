@@ -7,13 +7,13 @@ export function getReferencesAtPositionFactory(
     { outReferenceEntry }: Mappers
 ): LanguageService['getReferencesAtPosition'] {
     return function (fileName: string, position: number): ReferenceEntry[] | undefined {
+        debugger;
         if (isVueFile(fileName)) {
             synchronize(fileName);
             const newFileName = toTsPath(fileName);
             const newPosition = calculatePosition(fileName, position, false);
             const result = lang.getReferencesAtPosition(newFileName, newPosition);
             if (result && result.length) {
-                debugger;
                 return result.map(outReferenceEntry, fileName);
             }
             return result;

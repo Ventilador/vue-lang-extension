@@ -7,13 +7,13 @@ export function getCombinedCodeFixFactory(
     { inCombinedCodeFixScope, outCombinedCodeActions, }: Mappers
 ): LanguageService['getCombinedCodeFix'] {
     return function (scope: CombinedCodeFixScope, fixId: {}, formatOptions: FormatCodeSettings, preferences: UserPreferences): CombinedCodeActions {
+        debugger;
         if (isVueFile(scope.fileName)) {
             synchronize(scope.fileName);
             scope = inCombinedCodeFixScope(scope.fileName, scope);
 
             const result = lang.getCombinedCodeFix(scope, fixId, formatOptions, preferences);
             if (result) {
-                debugger;
                 return outCombinedCodeActions(scope.fileName, result);
             }
         }

@@ -7,11 +7,11 @@ export function getNavigateToItemsFactory(
     { outNavigateToItem }: Mappers
 ): LanguageService['getNavigateToItems'] {
     return function (searchValue: string, maxResultCount: number | undefined, fileName: string | undefined, excludeDtsFiles: boolean | undefined): NavigateToItem[] {
+        debugger;
         if (fileName && isVueFile(fileName)) {
             const newFile = toTsPath(fileName);
             const result = lang.getNavigateToItems(searchValue, maxResultCount, newFile, excludeDtsFiles);
             if (result.length) {
-                debugger;
                 return result.map(outNavigateToItem, fileName);
             }
 

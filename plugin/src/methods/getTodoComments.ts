@@ -6,11 +6,11 @@ export function getTodoCommentsFactory
         { isVueFile, synchronize, toTsPath, calculatePosition }: Utils,
         { outTodoComment }: Mappers): LanguageService['getTodoComments'] {
     return function (fileName: string, descriptors: TodoCommentDescriptor[]): TodoComment[] {
+        debugger;
         if (isVueFile(fileName)) {
             synchronize(fileName);
             const result = lang.getTodoComments(toTsPath(fileName), descriptors);
             if (result.length) {
-                debugger;
                 return result.map(outTodoComment, fileName);
             }
             return result;

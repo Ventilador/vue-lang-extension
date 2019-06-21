@@ -7,13 +7,13 @@ export function getImplementationAtPositionFactory(
     { outImplementationLocation }: Mappers
 ): LanguageService['getImplementationAtPosition'] {
     return function (fileName: string, position: number): ReadonlyArray<ImplementationLocation> | undefined {
+        debugger;
         if (isVueFile(fileName)) {
             synchronize(fileName);
             const newFileName = toTsPath(fileName);
             const newPosition = calculatePosition(fileName, position, false);
             const result = lang.getImplementationAtPosition(newFileName, newPosition);
             if (result && result.length) {
-                debugger;
                 return result && result.map(outImplementationLocation, fileName);
             }
             return result;

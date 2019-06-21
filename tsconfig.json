@@ -11,12 +11,6 @@
         },
         {
             "path": "bin"
-        },
-        {
-            "path": "serialization"
-        },
-        {
-            "path": "ts-shared"
         }
     ]
 }

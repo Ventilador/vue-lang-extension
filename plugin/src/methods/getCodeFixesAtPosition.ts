@@ -14,9 +14,10 @@ export function getCodeFixesAtPositionFactory(
             const newEnd = calculatePosition(fileName, end, false);
             const result = lang.getCodeFixesAtPosition(newFileName, newStart, newEnd, errorCodes, formatOptions, preferences);
             if (result.length) {
-                debugger;
                 return result.map(outCodeFixAction, fileName);
             }
+
+            return result;
         }
 
         return lang.getCodeFixesAtPosition(fileName, start, end, errorCodes, formatOptions, preferences);

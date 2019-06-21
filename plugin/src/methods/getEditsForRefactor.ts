@@ -13,7 +13,6 @@ export function getEditsForRefactorFactory(
             const position = inNumberOrTextRange(fileName, positionOrRange);
             const result = lang.getEditsForRefactor(newFileName, formatOptions, position, refactorName, actionName, preferences);
             if (result) {
-                debugger;
                 return outRefactorEditInfo(fileName, result);
             }
 

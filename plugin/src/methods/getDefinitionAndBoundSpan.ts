@@ -13,7 +13,6 @@ export function getDefinitionAndBoundSpanFactory(
             const newPosition = calculatePosition(fileName, position, false);
             const result = lang.getDefinitionAndBoundSpan(newFileName, newPosition);
             if (result) {
-                debugger;
                 return outDefinitionInfoAndBoundSpan(fileName, result);
             }
             return result;

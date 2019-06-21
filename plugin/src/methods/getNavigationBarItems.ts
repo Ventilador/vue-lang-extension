@@ -7,11 +7,11 @@ export function getNavigationBarItemsFactory(
     { outNavigationBarItem }: Mappers,
 ): LanguageService['getNavigationBarItems'] {
     return function (fileName: string): NavigationBarItem[] {
+        debugger;
         if (isVueFile(fileName)) {
             synchronize(fileName);
             const result = lang.getNavigationBarItems(toTsPath(fileName));
             if (result.length) {
-                debugger;
                 return result.map(outNavigationBarItem, fileName);
             }
             return result;

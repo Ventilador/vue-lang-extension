@@ -13,8 +13,7 @@ export function getSignatureHelpItemsFactory(
             const newPosition = calculatePosition(fileName, position, false);
             const result = lang.getSignatureHelpItems(newFileName, newPosition, options);
             if (result) {
-                debugger;
-                return outSignatureHelpItems(fileName, result);
+                return outSignatureHelpItems(newFileName, result);
             }
             return result;
         }
