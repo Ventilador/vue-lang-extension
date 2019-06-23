@@ -1,6 +1,6 @@
-import { LanguageService, FormatCodeSettings, UserPreferences, FileTextChanges } from "typescript/lib/tsserverlibrary";
+import { FileTextChanges, FormatCodeSettings, LanguageService, UserPreferences } from "typescript/lib/tsserverlibrary";
 import { Utils } from "./../cache";
-import { enter, exit, getFileName, Mappers } from "./../transformers";
+import { Mappers } from "./../transformers";
 export function getEditsForFileRenameFactory(
     lang: LanguageService,
     _: Utils,

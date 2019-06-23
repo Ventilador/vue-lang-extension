@@ -1,6 +1,6 @@
-import { LanguageService, TextRange, UserPreferences, ApplicableRefactorInfo } from "typescript/lib/tsserverlibrary";
+import { ApplicableRefactorInfo, LanguageService, TextRange, UserPreferences } from "typescript/lib/tsserverlibrary";
 import { Utils } from "../cache";
-import { enter, exit, getFileName, Mappers, } from "../transformers";
+import { Mappers } from "../transformers";
 export function getApplicableRefactorsFactory(
     lang: LanguageService,
     { isVueFile, synchronize, outOfBounds, toTsPath }: Utils,

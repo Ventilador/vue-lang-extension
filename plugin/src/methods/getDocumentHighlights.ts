@@ -1,6 +1,6 @@
-import { LanguageService, DocumentHighlights } from "typescript/lib/tsserverlibrary";
+import { DocumentHighlights, LanguageService } from "typescript/lib/tsserverlibrary";
 import { Utils } from "./../cache";
-import { enter, exit, getFileName, Mappers } from "./../transformers";
+import { Mappers } from "./../transformers";
 export function getDocumentHighlightsFactory(
     lang: LanguageService,
     { isVueFile, synchronize, toTsPath, calculatePosition }: Utils,

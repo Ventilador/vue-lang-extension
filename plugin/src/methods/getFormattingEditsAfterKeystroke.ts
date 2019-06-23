@@ -1,6 +1,6 @@
-import { LanguageService, FormatCodeOptions, FormatCodeSettings, TextChange } from "typescript/lib/tsserverlibrary";
+import { FormatCodeOptions, FormatCodeSettings, LanguageService, TextChange } from "typescript/lib/tsserverlibrary";
 import { Utils } from "./../cache";
-import { enter, exit, getFileName, Mappers } from "./../transformers";
+import { Mappers } from "./../transformers";
 export function getFormattingEditsAfterKeystrokeFactory(
     lang: LanguageService,
     { isVueFile, synchronize, toTsPath, calculatePosition }: Utils,

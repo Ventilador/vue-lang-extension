@@ -1,4 +1,4 @@
-import { LanguageService, RenameInfoOptions, RenameInfo } from "typescript/lib/tsserverlibrary";
+import { LanguageService, RenameInfo, RenameInfoOptions } from "typescript/lib/tsserverlibrary";
 import { Utils } from "./../cache";
 import { Mappers } from "./../transformers";
 export function getRenameInfoFactory(

@@ -1,6 +1,6 @@
-import { LanguageService, DefinitionInfoAndBoundSpan } from "typescript/lib/tsserverlibrary";
+import { DefinitionInfoAndBoundSpan, LanguageService } from "typescript/lib/tsserverlibrary";
 import { Utils } from "./../cache";
-import { enter, exit, getFileName, Mappers } from "./../transformers";
+import { Mappers } from "./../transformers";
 export function getDefinitionAndBoundSpanFactory(
     lang: LanguageService,
     { isVueFile, synchronize, toTsPath, calculatePosition }: Utils,

@@ -1,5 +1,16 @@
+import {
+    ApplicableRefactorInfo, Classifications, ClassifiedSpan, CodeAction,
+    CodeFixAction, CombinedCodeActions, CombinedCodeFixScope, CompletionEntry,
+    CompletionEntryDetails, CompletionInfo, DefinitionInfo, DefinitionInfoAndBoundSpan,
+    Diagnostic, DiagnosticWithLocation, DocumentHighlights, FileTextChanges,
+    ImplementationLocation, JsxClosingTagInfo, LanguageService, LineAndCharacter,
+    NavigateToItem, NavigationBarItem, NavigationTree, OutliningSpan, QuickInfo,
+    RefactorEditInfo, ReferencedSymbol, ReferencedSymbolDefinitionInfo,
+    ReferenceEntry, RenameInfo, RenameInfoFailure, RenameInfoSuccess, RenameLocation,
+    SelectionRange, SignatureHelpItems, TextChange, TextInsertion, TextRange,
+    TextSpan, TodoComment, WithMetadata
+} from 'typescript/lib/tsserverlibrary';
 import { Utils } from './cache';
-import { LanguageService, ReferencedSymbol, ReferenceEntry, DefinitionInfo, DiagnosticWithLocation, RenameLocation, TextRange, ApplicableRefactorInfo, TextSpan, CodeFixAction, CombinedCodeFixScope, CombinedCodeActions, CompletionEntryDetails, Symbol, WithMetadata, CompletionInfo, DefinitionInfoAndBoundSpan, TextInsertion, DocumentHighlights, TextChange, RefactorEditInfo, Classifications, FileTextChanges, ImplementationLocation, JsxClosingTagInfo, NavigateToItem, NavigationBarItem, NavigationTree, OutliningSpan, QuickInfo, RenameInfo, RenameInfoSuccess, RenameInfoFailure, ClassifiedSpan, Diagnostic, SignatureHelpItems, SelectionRange, TodoComment, LineAndCharacter, ReferencedSymbolDefinitionInfo, CompletionEntry, CodeAction } from 'typescript/lib/tsserverlibrary';
 export const enter: Record<ArgumentName, EnterFunction> = {};
 export const exit: Record<MethodName, ExitFunction> = {};
 export type ArgumentName = string;
@@ -32,6 +43,8 @@ export interface Mappers {
     outRefactorEditInfo(this: string, value: RefactorEditInfo, index: number, arr: readonly RefactorEditInfo[]): RefactorEditInfo;
     outTextChange(file: string, value: TextChange): TextChange
     outTextChange(this: string, value: TextChange, index: number, arr: readonly TextChange[]): TextChange;
+    inTextChange(file: string, value: TextChange): TextChange
+    inTextChange(this: string, value: TextChange, index: number, arr: readonly TextChange[]): TextChange;
     outDocumentHighlights(file: string, value: DocumentHighlights): DocumentHighlights
     outDocumentHighlights(this: string, value: DocumentHighlights, index: number, arr: readonly DocumentHighlights[]): DocumentHighlights;
     outTextInsertion(file: string, value: TextInsertion): TextInsertion
@@ -109,6 +122,7 @@ export function createMappers({ fromTsPath, calculatePosition, synchronize, wasV
         inTextSpan: wrapper(inTextSpan),
         outRefactorEditInfo: wrapper(outRefactorEditInfo),
         outTextChange: wrapper(outTextChange),
+        inTextChange: wrapper(inTextChange),
         outDocumentHighlights: wrapper(outDocumentHighlights),
         outTextInsertion: wrapper(outTextInsertion),
         outDefinitionInfoAndBoundSpan: wrapper(outDefinitionInfoAndBoundSpan),
@@ -379,6 +393,12 @@ export function createMappers({ fromTsPath, calculatePosition, synchronize, wasV
             }
         }
         return fileTextChanges;
+    }
+    function inTextChange(file: string, val: TextChange): TextChange {
+        return {
+            newText: val.newText,
+            span: inTextSpan(file, val.span),
+        }
     }
     function outTextChange(file: string, val: TextChange): TextChange {
         return {

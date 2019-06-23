@@ -1,6 +1,6 @@
-import { LanguageService, DiagnosticWithLocation } from "typescript/lib/tsserverlibrary";
+import { DiagnosticWithLocation, LanguageService } from "typescript/lib/tsserverlibrary";
 import { Utils } from "../cache";
-import { enter, exit, getFileName, Mappers, } from "../transformers";
+import { Mappers } from "../transformers";
 export function getSyntacticDiagnosticsFactory(
     lang: LanguageService,
     { isVueFile, synchronize, toTsPath }: Utils,

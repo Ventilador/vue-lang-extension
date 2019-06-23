@@ -19,6 +19,9 @@ export type FsToWrap = {
 export type PartialFs = Partial<FsToWrap>;
 
 export function wrapFsMethods(original: PartialFs, utils: Utils) {
+    if (isPatched(original)) {
+        return original;
+    }
     const result: PartialFs = {};
     let mod = false;
     if (original.realpath) {
@@ -52,30 +55,40 @@ export function wrapFsMethods(original: PartialFs, utils: Utils) {
     if (mod) {
         Object.assign(original, result);
     }
-    return result;
+    patch(original);
+    return original;
 }
 
 function createWatchFile(original: PartialFs, { fromTsPath, wasVueFile }: Utils, fn: WatchFile): WatchFile {
-    return function (path: string, cb: FileWatcherCallback) {
+    if (isPatched(fn)) {
+        return fn;
+    }
+    return patch(function (path: string, cb: FileWatcherCallback) {
         if (wasVueFile(path)) {
             return fn.call(original, fromTsPath(path), cb);
         }
 
         return fn.call(original, path, cb);
-    }
+    });
 }
 function createFileExists(original: PartialFs, { fromTsPath, wasVueFile }: Utils, fn: FileExists): FileExists {
-    return function fileExists(path: string) {
+    if (isPatched(fn)) {
+        return fn;
+    }
+    return patch(function fileExists(path: string) {
         if (wasVueFile(path)) {
             return fn.call(original, fromTsPath(path));
         }
 
         return fn.call(original, path);
-    }
+    });
 }
 
 function createReadFile(original: PartialFs, { fromTsPath, wasVueFile, synchronize, getTsContent }: Utils, fn: ReadFile): ReadFile {
-    return function readFile(path: string, encoding?: string) {
+    if (isPatched(fn)) {
+        return fn;
+    }
+    return patch(function readFile(path: string, encoding?: string) {
         if (wasVueFile(path)) {
             path = fromTsPath(path);
             synchronize(path);
@@ -83,12 +96,15 @@ function createReadFile(original: PartialFs, { fromTsPath, wasVueFile, synchroni
         }
 
         return fn.call(original, path, encoding);
-    }
+    });
 }
 
 
 function createGetFileSize(original: PartialFs, { isVueFile, wasVueFile }: Utils, fn: GetFileSize): GetFileSize {
-    return function getFileSize(path: string) {
+    if (isPatched(fn)) {
+        return fn;
+    }
+    return patch(function getFileSize(path: string) {
         if (isVueFile(path)) {
             return 0;
         }
@@ -97,23 +113,29 @@ function createGetFileSize(original: PartialFs, { isVueFile, wasVueFile }: Utils
             debugger;
         }
         return fn.call(original, path);
-    }
+    });
 }
 
 function createGetModifiedTime(original: PartialFs, { wasVueFile }: Utils, fn: GetModifiedTime): GetModifiedTime {
-    return function getModifiedTime(path: string) {
+    if (isPatched(fn)) {
+        return fn;
+    }
+    return patch(function getModifiedTime(path: string) {
         if (wasVueFile(path)) {
             debugger;
         }
         return fn.call(original, path);
-    }
+    });
 }
 
 function createReadDirecory(original: PartialFs, { isVueFile, toTsPath }: Utils, fn: ReadDirectory): ReadDirectory {
-    return function readDirectory(path: string, extensions?: readonly string[], exclude?: readonly string[], include?: readonly string[], depth?: number): string[] {
+    if (isPatched(fn)) {
+        return fn;
+    }
+    return patch(function readDirectory(path: string, extensions?: readonly string[], exclude?: readonly string[], include?: readonly string[], depth?: number): string[] {
         return fn.call(original, path, extensions, exclude, include, depth)
             .reduce(dirReducer, [] as string[]);
-    }
+    });
 
     function dirReducer(prev: string[], item: string) {
         if (isVueFile(item)) {
@@ -126,11 +148,22 @@ function createReadDirecory(original: PartialFs, { isVueFile, toTsPath }: Utils,
 }
 
 function createRealPath(original: PartialFs, { wasVueFile, fromTsPath }: Utils, fn: RealPath): RealPath {
-    return function realpath(fileName: string) {
+    if (isPatched(fn)) {
+        return fn;
+    }
+    return patch(function realpath(fileName: string) {
         if (wasVueFile(fileName)) {
             return fn.call(original, fromTsPath(fileName)) + '.ts';
         }
 
         return fn.call(original, fileName);
-    }
+    });
+}
+const patched = Symbol('patched');
+function isPatched(val: any): boolean {
+    return !!val[patched];
+}
+function patch<T>(val: T): T {
+    (val as any)[patched] = true;
+    return val;
 }

@@ -1,4 +1,4 @@
-import { LanguageService, DiagnosticWithLocation } from "typescript/lib/tsserverlibrary";
+import { DiagnosticWithLocation, LanguageService } from "typescript/lib/tsserverlibrary";
 import { Utils } from "./../cache";
 import { Mappers } from "./../transformers";
 export function getSuggestionDiagnosticsFactory(

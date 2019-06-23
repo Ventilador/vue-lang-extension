@@ -1,4 +1,4 @@
-import { LanguageService, Diagnostic } from "typescript/lib/tsserverlibrary";
+import { Diagnostic, LanguageService } from "typescript/lib/tsserverlibrary";
 import { Utils } from "./../cache";
 import { Mappers } from "./../transformers";
 export function getSemanticDiagnosticsFactory(lang: LanguageService, utils: Utils, { outDiagnostic }: Mappers): LanguageService['getSemanticDiagnostics'] {

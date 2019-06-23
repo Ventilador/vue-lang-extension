@@ -1,6 +1,6 @@
-import { LanguageService, SignatureHelpItemsOptions, SignatureHelpItems } from "typescript/lib/tsserverlibrary";
+import { LanguageService, SignatureHelpItems, SignatureHelpItemsOptions } from "typescript/lib/tsserverlibrary";
 import { Utils } from "./../cache";
-import { enter, exit, getFileName, Mappers } from "./../transformers";
+import { Mappers } from "./../transformers";
 export function getSignatureHelpItemsFactory(
     lang: LanguageService,
     { isVueFile, synchronize, toTsPath, calculatePosition }: Utils,

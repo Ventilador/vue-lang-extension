@@ -1,6 +1,6 @@
 import { LanguageService } from "typescript/lib/tsserverlibrary";
 import { Utils } from "./../cache";
-import { enter, exit, getFileName, Mappers } from "./../transformers";
+import { Mappers } from "./../transformers";
 export function isValidBraceCompletionAtPositionFactory(lang: LanguageService, { isVueFile, synchronize, toTsPath, calculatePosition }: Utils, _: Mappers): LanguageService['isValidBraceCompletionAtPosition'] {
     return function (fileName: string, position: number, openingBrace: number): boolean {
         debugger;

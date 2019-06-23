@@ -1,4 +1,4 @@
-import { LanguageService, TextSpan, ClassifiedSpan } from "typescript/lib/tsserverlibrary";
+import { ClassifiedSpan, LanguageService, TextSpan } from "typescript/lib/tsserverlibrary";
 import { Utils } from "./../cache";
 import { Mappers } from "./../transformers";
 export function getSyntacticClassificationsFactory(

@@ -1,6 +1,6 @@
-import { LanguageService, TextSpan, Classifications } from "typescript/lib/tsserverlibrary";
+import { Classifications, LanguageService, TextSpan } from "typescript/lib/tsserverlibrary";
 import { Utils } from "./../cache";
-import { enter, exit, getFileName, Mappers } from "./../transformers";
+import { Mappers } from "./../transformers";
 export function getEncodedSemanticClassificationsFactory(
     lang: LanguageService,
     { isVueFile, synchronize, toTsPath }: Utils,

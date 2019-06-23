@@ -1,6 +1,6 @@
 import { LanguageService, ReferencedSymbol } from "typescript/lib/tsserverlibrary";
-import { Utils } from "./../cache";
 import { Mappers } from "../transformers";
+import { Utils } from "./../cache";
 
 export function findReferencesFactory(lang: LanguageService, { isVueFile, synchronize, toTsPath, calculatePosition, outOfBounds }: Utils, { outReferencedSymbol }: Mappers): LanguageService['findReferences'] {
     return function (fileName: string, position: number): ReferencedSymbol[] | undefined {

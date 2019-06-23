@@ -1,4 +1,4 @@
-import { LanguageService, DefinitionInfo } from "typescript/lib/tsserverlibrary";
+import { DefinitionInfo, LanguageService } from "typescript/lib/tsserverlibrary";
 import { Utils } from "../cache";
 import { Mappers } from "../transformers";
 

@@ -1,6 +1,9 @@
+import { TextChange } from "typescript/lib/tsserverlibrary";
+
 export function parse(text: string) {
     return parseContent(text);
 }
+
 
 
 const startTag = '<script lang="ts">';

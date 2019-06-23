@@ -1,4 +1,4 @@
-import { LanguageService, OrganizeImportsScope, FormatCodeSettings, UserPreferences, FileTextChanges } from "typescript/lib/tsserverlibrary";
+import { FileTextChanges, FormatCodeSettings, LanguageService, OrganizeImportsScope, UserPreferences } from "typescript/lib/tsserverlibrary";
 import { Utils } from "./../cache";
 import { Mappers } from "./../transformers";
 export function organizeImportsFactory(

@@ -1,6 +1,6 @@
-import { LanguageService, CombinedCodeFixScope, FormatCodeSettings, UserPreferences, CombinedCodeActions } from "typescript/lib/tsserverlibrary";
+import { CombinedCodeActions, CombinedCodeFixScope, FormatCodeSettings, LanguageService, UserPreferences } from "typescript/lib/tsserverlibrary";
 import { Utils } from "../cache";
-import { enter, exit, getFileName, Mappers } from "../transformers";
+import { Mappers } from "../transformers";
 export function getCombinedCodeFixFactory(
     lang: LanguageService,
     { isVueFile, synchronize }: Utils,

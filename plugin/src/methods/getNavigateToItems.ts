@@ -1,6 +1,6 @@
-import { LanguageService, NavigateToItem, server } from "typescript/lib/tsserverlibrary";
+import { LanguageService, NavigateToItem } from "typescript/lib/tsserverlibrary";
 import { Utils } from "./../cache";
-import { enter, exit, getFileName, Mappers } from "./../transformers";
+import { Mappers } from "./../transformers";
 export function getNavigateToItemsFactory(
     lang: LanguageService,
     { isVueFile, synchronize, toTsPath, calculatePosition }: Utils,

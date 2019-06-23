@@ -1,10 +1,13 @@
-import { server, LanguageService, sys } from 'typescript/lib/tsserverlibrary';
-import { createUtils, Utils } from "./cache";
+import './logger';
+import * as tsLib from 'typescript/lib/tsserverlibrary';
+import { join } from 'path';
+import { LanguageService, server } from 'typescript/lib/tsserverlibrary';
+import { createUtils } from "./cache";
+import { wrapFsMethods } from './createFsMethodWrappers';
+import { applyCodeActionCommandFactory } from './methods/applyCodeActionCommand';
 import { findReferencesFactory } from "./methods/findReferences";
-import { getDefinitionAtPositionFactory } from "./methods/getDefinitionAtPosition";
-import { getSyntacticDiagnosticsFactory } from "./methods/getSyntacticDiagnostics";
-import { getApplicableRefactorsFactory } from "./methods/getApplicableRefactors";
 import { findRenameLocationsFactory } from "./methods/findRenameLocations";
+import { getApplicableRefactorsFactory } from "./methods/getApplicableRefactors";
 import { getBraceMatchingAtPositionFactory } from "./methods/getBraceMatchingAtPosition";
 import { getBreakpointStatementAtPositionFactory } from "./methods/getBreakpointStatementAtPosition";
 import { getCodeFixesAtPositionFactory } from "./methods/getCodeFixesAtPosition";
@@ -13,10 +16,11 @@ import { getCompletionEntryDetailsFactory } from './methods/getCompletionEntryDe
 import { getCompletionEntrySymbolFactory } from './methods/getCompletionEntrySymbol';
 import { getCompletionsAtPositionFactory } from './methods/getCompletionsAtPosition';
 import { getDefinitionAndBoundSpanFactory } from './methods/getDefinitionAndBoundSpan';
+import { getDefinitionAtPositionFactory } from "./methods/getDefinitionAtPosition";
 import { getDocCommentTemplateAtPositionFactory } from './methods/getDocCommentTemplateAtPosition';
 import { getDocumentHighlightsFactory } from './methods/getDocumentHighlights';
-import { getEditsForRefactorFactory } from './methods/getEditsForRefactor';
 import { getEditsForFileRenameFactory } from './methods/getEditsForFileRename';
+import { getEditsForRefactorFactory } from './methods/getEditsForRefactor';
 import { getEmitOutputFactory } from './methods/getEmitOutput';
 import { getEncodedSemanticClassificationsFactory } from './methods/getEncodedSemanticClassifications';
 import { getEncodedSyntacticClassificationsFactory } from './methods/getEncodedSyntacticClassifications';
@@ -28,7 +32,9 @@ import { getIndentationAtPositionFactory } from './methods/getIndentationAtPosit
 import { getJsxClosingTagAtPositionFactory } from './methods/getJsxClosingTagAtPosition';
 import { getNameOrDottedNameSpanFactory } from './methods/getNameOrDottedNameSpan';
 import { getNavigateToItemsFactory } from './methods/getNavigateToItems';
+import { getNavigationBarItemsFactory } from './methods/getNavigationBarItems';
 import { getNavigationTreeFactory } from './methods/getNavigationTree';
+import { getNonBoundSourceFileFactory } from './methods/getNonBoundSourceFile';
 import { getOccurrencesAtPositionFactory } from './methods/getOccurrencesAtPosition';
 import { getOutliningSpansFactory } from './methods/getOutliningSpans';
 import { getQuickInfoAtPositionFactory } from './methods/getQuickInfoAtPosition';
@@ -38,32 +44,36 @@ import { getSemanticClassificationsFactory } from './methods/getSemanticClassifi
 import { getSemanticDiagnosticsFactory } from './methods/getSemanticDiagnostics';
 import { getSignatureHelpItemsFactory } from './methods/getSignatureHelpItems';
 import { getSmartSelectionRangeFactory } from './methods/getSmartSelectionRange';
+import { getSourceMapperFactory } from './methods/getSourceMapper';
 import { getSpanOfEnclosingCommentFactory } from './methods/getSpanOfEnclosingComment';
 import { getSuggestionDiagnosticsFactory } from './methods/getSuggestionDiagnostics';
 import { getSyntacticClassificationsFactory } from './methods/getSyntacticClassifications';
+import { getSyntacticDiagnosticsFactory } from "./methods/getSyntacticDiagnostics";
 import { getTodoCommentsFactory } from './methods/getTodoComments';
 import { getTypeDefinitionAtPositionFactory } from './methods/getTypeDefinitionAtPosition';
 import { isValidBraceCompletionAtPositionFactory } from './methods/isValidBraceCompletionAtPosition';
 import { organizeImportsFactory } from './methods/organizeImports';
 import { toLineColumnOffsetFactory } from './methods/toLineColumnOffset';
-import { applyCodeActionCommandFactory } from './methods/applyCodeActionCommand';
 import { createMappers } from './transformers';
-import { getNavigationBarItemsFactory } from './methods/getNavigationBarItems';
-import { join } from 'path';
-import { getNonBoundSourceFileFactory } from './methods/getNonBoundSourceFile';
-import { getSourceMapperFactory } from './methods/getSourceMapper';
-import { wrapFsMethods } from './createFsMethodWrappers';
-let cachedPlugin: server.PluginModule | undefined;
+import { patchProject } from './patchProject';
 
-export = function init(): server.PluginModule {
-    return cachedPlugin = {
+export = function init({ typescript: ts }: { typescript: typeof tsLib }): server.PluginModule {
+    return {
         create: function (info: server.PluginCreateInfo): LanguageService {
-            const utils = createUtils(info);
+            const utils = createUtils(info, ts.server);
             wrapFsMethods(info.serverHost, utils);
             wrapFsMethods(info.languageServiceHost, utils);
             const mappers = createMappers(utils);
-            info.project.addRoot
             const { languageService } = info;
+            patchProject(info.project, utils, mappers);
+            return Object.keys(languageService).reduce((prev: any, cur) => {
+                if (MethodFactories[cur + 'Factory']) {
+                    prev[cur] = MethodFactories[cur + 'Factory'](languageService, utils, mappers);
+                } else {
+                    prev[cur] = (languageService as any)[cur];
+                }
+                return prev;
+            }, {}) as LanguageService;
             return {
                 applyCodeActionCommand: applyCodeActionCommandFactory(languageService, utils, mappers),
                 findReferences: findReferencesFactory(languageService, utils, mappers),
@@ -115,87 +125,130 @@ export = function init(): server.PluginModule {
                 getNavigationBarItems: getNavigationBarItemsFactory(languageService, utils, mappers),
                 getNonBoundSourceFile: getNonBoundSourceFileFactory(languageService, utils, mappers),
                 getSourceMapper: getSourceMapperFactory(languageService, utils, mappers),
-                getCompilerOptionsDiagnostics: languageService.getCompilerOptionsDiagnostics.bind(languageService),
-                cleanupSemanticCache: languageService.cleanupSemanticCache.bind(languageService),
-                dispose: languageService.dispose.bind(languageService),
-                getProgram: languageService.getProgram.bind(languageService),
+                getCompilerOptionsDiagnostics: languageService.getCompilerOptionsDiagnostics,
+                cleanupSemanticCache: languageService.cleanupSemanticCache,
+                dispose: languageService.dispose,
+                getProgram: languageService.getProgram,
             } as any;
-        },
-        getExternalFiles(proj: server.Project) {
-            const curDir = proj.getCurrentDirectory();
-            const result = sys.readDirectory(curDir, ['.vue'], [], [join(curDir, '**/*.vue')]);
-            const found = new Set(proj.getFileNames().filter(i => i.endsWith('.vue')));
-            result.forEach(i => {
-                const path = server.asNormalizedPath(i);
-                if (found.has(path)) {
-                    return;
-                }
-
-                proj.addMissingFileRoot(path);
-            })
-            // return result.filter(i => i.endsWith('.vue.ts'));
-            return [];
         }
     }
 }
-// interface LanguageService {
-//     getSyntacticDiagnostics(fileName: string): DiagnosticWithLocation[];
-//     getSemanticDiagnostics(fileName: string): Diagnostic[];
-//     getSuggestionDiagnostics(fileName: string): DiagnosticWithLocation[];
-//     getSyntacticClassifications(fileName: string, span: TextSpan): ClassifiedSpan[];
-//     getSemanticClassifications(fileName: string, span: TextSpan): ClassifiedSpan[];
-//     getEncodedSyntacticClassifications(fileName: string, span: TextSpan): Classifications;
-//     getEncodedSemanticClassifications(fileName: string, span: TextSpan): Classifications;
-//     getCompletionsAtPosition(fileName: string, position: number, options: GetCompletionsAtPositionOptions | undefined): WithMetadata<CompletionInfo> | undefined;
-//     getCompletionEntryDetails(fileName: string, position: number, name: string, formatOptions: FormatCodeOptions | FormatCodeSettings | undefined, source: string | undefined, preferences: UserPreferences | undefined): CompletionEntryDetails | undefined;
-//     getCompletionEntrySymbol(fileName: string, position: number, name: string, source: string | undefined): Symbol | undefined;
-//     getQuickInfoAtPosition(fileName: string, position: number): QuickInfo | undefined;
-//     getNameOrDottedNameSpan(fileName: string, startPos: number, endPos: number): TextSpan | undefined;
-//     getBreakpointStatementAtPosition(fileName: string, position: number): TextSpan | undefined;
-//     getSignatureHelpItems(fileName: string, position: number, options: SignatureHelpItemsOptions | undefined): SignatureHelpItems | undefined;
-//     getRenameInfo(fileName: string, position: number, options?: RenameInfoOptions): RenameInfo;
-//     findRenameLocations(fileName: string, position: number, findInStrings: boolean, findInComments: boolean, providePrefixAndSuffixTextForRename?: boolean): ReadonlyArray<RenameLocation> | undefined;
-//     getSmartSelectionRange(fileName: string, position: number): SelectionRange;
-//     getDefinitionAtPosition(fileName: string, position: number): ReadonlyArray<DefinitionInfo> | undefined;
-//     getDefinitionAndBoundSpan(fileName: string, position: number): DefinitionInfoAndBoundSpan | undefined;
-//     getTypeDefinitionAtPosition(fileName: string, position: number): ReadonlyArray<DefinitionInfo> | undefined;
-//     getImplementationAtPosition(fileName: string, position: number): ReadonlyArray<ImplementationLocation> | undefined;
-//     getReferencesAtPosition(fileName: string, position: number): ReferenceEntry[] | undefined;
-//     findReferences(fileName: string, position: number): ReferencedSymbol[] | undefined;
-//     getDocumentHighlights(fileName: string, position: number, filesToSearch: string[]): DocumentHighlights[] | undefined;
-//     /** @deprecated */
-//     getOccurrencesAtPosition(fileName: string, position: number): ReadonlyArray<ReferenceEntry> | undefined;
-//     getNavigateToItems(searchValue: string, maxResultCount?: number, fileName?: string, excludeDtsFiles?: boolean): NavigateToItem[];
-//     getNavigationBarItems(fileName: string): NavigationBarItem[];
-//     getNavigationTree(fileName: string): NavigationTree;
-//     getOutliningSpans(fileName: string): OutliningSpan[];
-//     getTodoComments(fileName: string, descriptors: TodoCommentDescriptor[]): TodoComment[];
-//     getBraceMatchingAtPosition(fileName: string, position: number): TextSpan[];
-//     getIndentationAtPosition(fileName: string, position: number, options: EditorOptions | EditorSettings): number;
-//     getFormattingEditsForRange(fileName: string, start: number, end: number, options: FormatCodeOptions | FormatCodeSettings): TextChange[];
-//     getFormattingEditsForDocument(fileName: string, options: FormatCodeOptions | FormatCodeSettings): TextChange[];
-//     getFormattingEditsAfterKeystroke(fileName: string, position: number, key: string, options: FormatCodeOptions | FormatCodeSettings): TextChange[];
-//     getDocCommentTemplateAtPosition(fileName: string, position: number): TextInsertion | undefined;
-//     isValidBraceCompletionAtPosition(fileName: string, position: number, openingBrace: number): boolean;
-//     getJsxClosingTagAtPosition(fileName: string, position: number): JsxClosingTagInfo | undefined;
-//     getSpanOfEnclosingComment(fileName: string, position: number, onlyMultiLine: boolean): TextSpan | undefined;
-//     toLineColumnOffset?(fileName: string, position: number): LineAndCharacter;
-//     getCodeFixesAtPosition(fileName: string, start: number, end: number, errorCodes: ReadonlyArray<number>, formatOptions: FormatCodeSettings, preferences: UserPreferences): ReadonlyArray<CodeFixAction>;
-//     getCombinedCodeFix(scope: CombinedCodeFixScope, fixId: {}, formatOptions: FormatCodeSettings, preferences: UserPreferences): CombinedCodeActions;
-//     applyCodeActionCommand(action: CodeActionCommand, formatSettings?: FormatCodeSettings): Promise<ApplyCodeActionCommandResult>;
-//     applyCodeActionCommand(action: CodeActionCommand[], formatSettings?: FormatCodeSettings): Promise<ApplyCodeActionCommandResult[]>;
-//     applyCodeActionCommand(action: CodeActionCommand | CodeActionCommand[], formatSettings?: FormatCodeSettings): Promise<ApplyCodeActionCommandResult | ApplyCodeActionCommandResult[]>;
-//     /** @deprecated `fileName` will be ignored */
-//     applyCodeActionCommand(fileName: string, action: CodeActionCommand): Promise<ApplyCodeActionCommandResult>;
-//     /** @deprecated `fileName` will be ignored */
-//     applyCodeActionCommand(fileName: string, action: CodeActionCommand[]): Promise<ApplyCodeActionCommandResult[]>;
-//     /** @deprecated `fileName` will be ignored */
-//     applyCodeActionCommand(fileName: string, action: CodeActionCommand | CodeActionCommand[]): Promise<ApplyCodeActionCommandResult | ApplyCodeActionCommandResult[]>;
-//     getApplicableRefactors(fileName: string, positionOrRange: number | TextRange, preferences: UserPreferences | undefined): ApplicableRefactorInfo[];
-//     getEditsForRefactor(fileName: string, formatOptions: FormatCodeSettings, positionOrRange: number | TextRange, refactorName: string, actionName: string, preferences: UserPreferences | undefined): RefactorEditInfo | undefined;
-//     organizeImports(scope: OrganizeImportsScope, formatOptions: FormatCodeSettings, preferences: UserPreferences | undefined): ReadonlyArray<FileTextChanges>;
-//     getEditsForFileRename(oldFilePath: string, newFilePath: string, formatOptions: FormatCodeSettings, preferences: UserPreferences | undefined): ReadonlyArray<FileTextChanges>;
-//     getEmitOutput(fileName: string, emitOnlyDtsFiles?: boolean): EmitOutput;
-// }
-
-
+const MethodNames = [
+    'applyCodeActionCommand',
+    'findReferences',
+    'getDefinitionAtPosition',
+    'getSyntacticDiagnostics',
+    'getApplicableRefactors',
+    'findRenameLocations',
+    'getBraceMatchingAtPosition',
+    'getBreakpointStatementAtPosition',
+    'getCodeFixesAtPosition',
+    'getCombinedCodeFix',
+    'getCompletionEntryDetails',
+    'getCompletionEntrySymbol',
+    'getCompletionsAtPosition',
+    'getDefinitionAndBoundSpan',
+    'getDocCommentTemplateAtPosition',
+    'getDocumentHighlights',
+    'getEditsForFileRename',
+    'getEditsForRefactor',
+    'getEmitOutput',
+    'getEncodedSemanticClassifications',
+    'getEncodedSyntacticClassifications',
+    'getFormattingEditsAfterKeystroke',
+    'getFormattingEditsForDocument',
+    'getFormattingEditsForRange',
+    'getImplementationAtPosition',
+    'getIndentationAtPosition',
+    'getJsxClosingTagAtPosition',
+    'getNameOrDottedNameSpan',
+    'getNavigateToItems',
+    'getNavigationTree',
+    'getOccurrencesAtPosition',
+    'getOutliningSpans',
+    'getQuickInfoAtPosition',
+    'getReferencesAtPosition',
+    'getRenameInfo',
+    'getSemanticClassifications',
+    'getSemanticDiagnostics',
+    'getSignatureHelpItems',
+    'getSmartSelectionRange',
+    'getSpanOfEnclosingComment',
+    'getSuggestionDiagnostics',
+    'getSyntacticClassifications',
+    'getTodoComments',
+    'getTypeDefinitionAtPosition',
+    'isValidBraceCompletionAtPosition',
+    'organizeImports',
+    'toLineColumnOffset',
+    'getNavigationBarItems',
+    'getNonBoundSourceFile',
+    'getSourceMapper',
+    'getCompilerOptionsDiagnostics',
+    'cleanupSemanticCache',
+    'dispose',
+    'getProgram',
+];
+const MethodFactories = [
+    applyCodeActionCommandFactory,
+    findReferencesFactory,
+    getDefinitionAtPositionFactory,
+    getSyntacticDiagnosticsFactory,
+    getApplicableRefactorsFactory,
+    findRenameLocationsFactory,
+    getBraceMatchingAtPositionFactory,
+    getBreakpointStatementAtPositionFactory,
+    getCodeFixesAtPositionFactory,
+    getCombinedCodeFixFactory,
+    getCompletionEntryDetailsFactory,
+    getCompletionEntrySymbolFactory,
+    getCompletionsAtPositionFactory,
+    getDefinitionAndBoundSpanFactory,
+    getDocCommentTemplateAtPositionFactory,
+    getDocumentHighlightsFactory,
+    getEditsForFileRenameFactory,
+    getEditsForRefactorFactory,
+    getEmitOutputFactory,
+    getEncodedSemanticClassificationsFactory,
+    getEncodedSyntacticClassificationsFactory,
+    getFormattingEditsAfterKeystrokeFactory,
+    getFormattingEditsForDocumentFactory,
+    getFormattingEditsForRangeFactory,
+    getImplementationAtPositionFactory,
+    getIndentationAtPositionFactory,
+    getJsxClosingTagAtPositionFactory,
+    getNameOrDottedNameSpanFactory,
+    getNavigateToItemsFactory,
+    getNavigationTreeFactory,
+    getOccurrencesAtPositionFactory,
+    getOutliningSpansFactory,
+    getQuickInfoAtPositionFactory,
+    getReferencesAtPositionFactory,
+    getRenameInfoFactory,
+    getSemanticClassificationsFactory,
+    getSemanticDiagnosticsFactory,
+    getSignatureHelpItemsFactory,
+    getSmartSelectionRangeFactory,
+    getSpanOfEnclosingCommentFactory,
+    getSuggestionDiagnosticsFactory,
+    getSyntacticClassificationsFactory,
+    getTodoCommentsFactory,
+    getTypeDefinitionAtPositionFactory,
+    isValidBraceCompletionAtPositionFactory,
+    organizeImportsFactory,
+    toLineColumnOffsetFactory,
+    getNavigationBarItemsFactory,
+    getNonBoundSourceFileFactory,
+    getSourceMapperFactory,
+].reduce((prev, cur) => {
+    prev[cur.name] = cur;
+    return prev;
+}, Object.create(null) as Record<string, Function>);
+const patched = Symbol('patched');
+function patch<T>(val: T): T {
+    (val as any)[patched] = true;
+    return val;
+}
+function isPatched(val: any): boolean {
+    return !!val[patched];
+}

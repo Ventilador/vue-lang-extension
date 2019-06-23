@@ -1,6 +1,6 @@
 import { LanguageService, TextSpan } from "typescript/lib/tsserverlibrary";
 import { Utils } from "../cache";
-import { enter, exit, getFileName, Mappers, } from "../transformers";
+import { Mappers } from "../transformers";
 export function getBreakpointStatementAtPositionFactory(
     lang: LanguageService,
     { isVueFile, synchronize, calculatePosition, toTsPath }: Utils,

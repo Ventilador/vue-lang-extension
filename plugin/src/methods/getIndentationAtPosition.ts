@@ -1,6 +1,6 @@
-import { LanguageService, EditorOptions, EditorSettings } from "typescript/lib/tsserverlibrary";
+import { EditorOptions, EditorSettings, LanguageService } from "typescript/lib/tsserverlibrary";
 import { Utils } from "./../cache";
-import { enter, exit, getFileName, Mappers } from "./../transformers";
+import { Mappers } from "./../transformers";
 export function getIndentationAtPositionFactory(lang: LanguageService, { isVueFile, synchronize, toTsPath, calculatePosition }: Utils, _: Mappers): LanguageService['getIndentationAtPosition'] {
     return function (fileName: string, position: number, options: EditorOptions | EditorSettings): number {
         debugger;

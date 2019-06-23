@@ -1,6 +1,6 @@
-import { LanguageService, GetCompletionsAtPositionOptions, WithMetadata, CompletionInfo } from "typescript/lib/tsserverlibrary";
+import { CompletionInfo, GetCompletionsAtPositionOptions, LanguageService, WithMetadata } from "typescript/lib/tsserverlibrary";
 import { Utils } from "./../cache";
-import { enter, exit, getFileName, Mappers } from "./../transformers";
+import { Mappers } from "./../transformers";
 export function getCompletionsAtPositionFactory(
     lang: LanguageService,
     { isVueFile, synchronize, toTsPath, calculatePosition }: Utils,
