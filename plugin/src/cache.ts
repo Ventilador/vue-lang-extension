@@ -125,7 +125,7 @@ export function createUtils({ serverHost, project, languageServiceHost }: TsServ
 
             vueFile.originalContent = newContent;
             const parsedContent = parse(newContent);
-            const diff = getTextChange(vueFile.content, parsedContent.parsed);
+            const diff = getTextChange(vueFile.content, parsedContent.content);
             if (!diff) {
                 return;
             }
@@ -163,7 +163,7 @@ export function createUtils({ serverHost, project, languageServiceHost }: TsServ
         info = new server.ScriptInfo(serverHost, path, ScriptKind.Unknown, false, server.normalizedPathToPath(path, project.getCurrentDirectory(), (v) => v.toLowerCase()));
         info.open(content(fileName));
         info.close = interceptedClose;
-        
+
         project.projectService.openFiles.set(fileName.toLowerCase(), server.asNormalizedPath(project.getCurrentDirectory()));
         project.addRoot(info);
         return info;
