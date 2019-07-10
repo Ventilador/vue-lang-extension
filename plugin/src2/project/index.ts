@@ -5,10 +5,8 @@ import { Utils } from "../utils";
 const patched = Symbol('patched');
 export function patchProject(service: server.ProjectService, mappers: Mappers, utils: Utils): void;
 export function patchProject(service: any, mappers: Mappers, utils: Utils): void {
-    const { shouldRemap } = utils;
     if (needsPatching(service.applyChangesInOpenFiles)) {
-        const options = Object.assign({ shouldAddSingleFile, addFiles, needsMoreFiles }, utils);
-        patch(service, 'applyChangesInOpenFiles', applyChangesInOpenFilesFactory(service.applyChangesInOpenFiles, options, mappers));
+        patch(service, 'applyChangesInOpenFiles', applyChangesInOpenFilesFactory(service.applyChangesInOpenFiles, extend(utils), mappers));
     }
     wrapWithDebugger(service, 'openExternalProject');
     wrapWithDebugger(service, 'openExternalProjects');
@@ -16,13 +14,15 @@ export function patchProject(service: any, mappers: Mappers, utils: Utils): void
     wrapWithDebugger(service, 'openClientFileWithNormalizedPath');
     wrapWithDebugger(service, 'closeClientFile');
     wrapWithDebugger(service, 'reloadProjects');
+}
 
+function extend(utils: Utils) {
+    const shouldRemap = utils.shouldRemap;
+    return Object.assign({ shouldAddSingleFile, needsMoreFiles }, utils);
 
     function needsMoreFiles(fileName: string) {
         return shouldRemap(fileName);
     }
-
-
     function shouldAddSingleFile(fileName: string) {
         return !shouldRemap(fileName);
     }

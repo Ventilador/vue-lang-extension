@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "noEmit": true
+        "noEmit": true,
     },
     "references": [
         {
@@ -12,5 +12,8 @@
         {
             "path": "bin"
         }
+    ],
+    "exclude": [
+        "**"
     ]
 }

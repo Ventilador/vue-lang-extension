@@ -28,12 +28,10 @@ export function applyChangesInOpenFilesFactory(
 
         return orig.call(this, openFiles, changedFiles, closedFiles);
     }
-   
+
 
     function reduceOpenFiles(prev: OpenFileArguments[], openedFile: OpenFileArguments): OpenFileArguments[] {
-        if (shouldAddSingleFile(openedFile.fileName)) {
-            openFile(prev, openedFile.fileName, openedFile, ScriptKind.TS);
-        }
+        openFile(prev, openedFile.fileName, openedFile, ScriptKind.Unknown);
         if (needsMoreFiles(openedFile.fileName)) {
             addFiles((file, kind) => openFile(prev, file, openedFile, kind || ScriptKind.TS), openedFile.fileName)
         }
@@ -42,7 +40,7 @@ export function applyChangesInOpenFilesFactory(
 
     function openFile(prev: OpenFileArguments[], fileName: string, openedFile: OpenFileArguments, kind: ScriptKind) {
         prev.push({
-            content: open(fileName, openedFile.content),
+            content: open(fileName, openedFile.content, kind),
             fileName: openedFile.fileName,
             hasMixedContent: openedFile.hasMixedContent,
             projectRootPath: openedFile.projectRootPath,
@@ -95,6 +93,7 @@ function mapIterator<T, U>(iter: Iterator<T>, mapFn: (x: T) => U): Iterator<U> {
         }
     };
 }
+
 function reduceIterator<T, U>(iterator: Iterator<T>, reducer: (prev: U[], val: T, index: number) => U[]): Iterator<U> {
     let prev: U[] = [];
     let index = 0;

@@ -1,4 +1,4 @@
-import { FileWatcherCallback, FileWatcher } from "typescript/lib/tsserverlibrary";
+import { FileWatcherCallback, FileWatcher, ScriptKind } from "typescript/lib/tsserverlibrary";
 import { Utils } from "./utils";
 export type WatchFile = (path: string, cb: FileWatcherCallback) => FileWatcher;
 export type FileExists = (path: string) => boolean;
@@ -76,13 +76,13 @@ function createFileExists({ originatingFileName }: Utils, fn: FileExists): FileE
     });
 }
 
-function createReadFile({ shouldRemap, reload }: Utils, fn: ReadFile): ReadFile {
+function createReadFile({ shouldRemap, open }: Utils, fn: ReadFile): ReadFile {
     if (isPatched(fn)) {
         return fn;
     }
     return patch(function readFile(this: PartialFs, path: string, encoding?: string) {
         if (shouldRemap(path)) {
-            return reload(path, fn.call(this, path, encoding) || '');
+            return open(path, fn.call(this, path, encoding) || '', ScriptKind.Unknown);
         }
 
         return fn.call(this, path, encoding);

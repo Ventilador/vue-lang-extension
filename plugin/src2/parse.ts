@@ -21,8 +21,7 @@ function parseContent(originalContent: string) {
     return {
         start: -1,
         end: -1,
-        content: originalContent && empty,
-        originalContent: originalContent
+        content: originalContent && empty
     };
 }
 

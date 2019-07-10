@@ -2,6 +2,15 @@ import { LineAndCharacter, TextRange, TextChange } from "typescript/lib/tsserver
 import * as tsLib from 'typescript/lib/tsserverlibrary';
 import { parse } from "./parse";
 import { readFileSync } from "fs";
+import { OpenFileArguments } from "./project/applyChangesInOpenFiles";
+
+export function createUtils(ts: typeof tsLib): Utils {
+    if ((ts.sys as any)[patched]) {
+        return (ts.sys as any)[patched]
+    }
+    return (ts.sys as any)[patched] = createUtilsInternal(ts);
+}
+
 export type Utils = {
     originatedFilesNames: (fileAdder: (fileName: string, kind?: tsLib.ScriptKind.TS) => void, originalFileName: string, thisArg?: any) => void;
     calculatePosition: (fileName: string, position: number, positive?: boolean) => number;
@@ -9,62 +18,58 @@ export type Utils = {
     getLineAndChar: (fileName: string, lineAndChar: LineAndCharacter, positive?: boolean) => LineAndCharacter;
     getContent: (fileName: string) => string;
     originatingFileName: (fileName: string) => string;
-
-    open: (fileName: string, content?: string) => string;
+    synchronizer: (project: tsLib.server.Project) => (file: string) => void;
+    open: (fileName: string, content: string, kind: tsLib.ScriptKind) => string;
     getStart: (fileName: string, real?: boolean) => number;
     getEnd: (fileName: string, real?: boolean) => number;
     outOfBounds: (fileName: string, position: number | TextRange) => boolean;
     close: (fileName: string) => void;
     update: (fileName: string, changes: TextChange | Iterator<TextChange>) => void;
     has: (fileName: string) => boolean;
-    reload: (fileName: string, content: string) => string;
+    // reload: (fileName: string, content: string) => string;
+    addFiles: (fileAdder: (fileName: string) => void, originalFileName: string) => void;
 };
-type Info = {
-    start: number;
-    end: number;
-    content: string;
-    originalContent: string;
-    startLine: number | null;
-    lines: number[] | null;
-}
 
-function greaterThan(this: number, val: number) {
-    return this < val;
-}
-function checkBounds(diff: number, val: number) {
-    return val < 0 || val >= diff;
-}
-const vueExt = '.vue';
-const vueFiles: Record<string, Info> = Object.create(null);
-function isIterator(val: any): val is Iterator<any> {
-    return val && typeof val.next === 'function';
-}
-function tapIterator<T>(iter: Iterator<any>, mapper: (this: T, val: any) => void, thisArgs: T = null as any): () => IteratorResult<any> {
-    return function () {
-        const cur = iter.next();
-        if (!cur.done) {
-            mapper.call(thisArgs, cur.value);
-        }
-        return cur;
-    }
-}
-const patched = Symbol('patched');
-export function createUtils({ sys }: typeof tsLib): Utils {
-    if ((sys as any)[patched]) {
-        return (sys as any)[patched]
-    }
-    return (sys as any)[patched] = createUtilsInternal(sys);
-}
-function createUtilsInternal(sys: typeof tsLib.sys): Utils {
-    const utils: Utils = (sys as any)[patched] = {
-        shouldRemap, getLineAndChar,
+function createUtilsInternal({ sys }: typeof tsLib): Utils;
+function createUtilsInternal(info: any): Utils {
+    const { sys, arrayIterator } = info as typeof tsLib & { arrayIterator: ArrayIterator<OpenFileArguments> }
+    const newLine = sys.newLine.length;
+    return {
+        shouldRemap, getLineAndChar, addFiles,
         calculatePosition, getContent, outOfBounds,
-        getStart, getEnd, open, close, update, has, reload,
-        originatedFilesNames, originatingFileName
+        getStart, getEnd, open, close, update, has,
+        originatedFilesNames, originatingFileName, synchronizer
     };
 
-    const newLine = sys.newLine.length;
-    return utils;
+    function addFiles(fileAdder: (fileName: string, kind?: tsLib.ScriptKind.TS) => void, originalFileName: string) {
+        fileAdder(originalFileName, tsLib.ScriptKind.TS);
+        fileAdder(toTsFile(originalFileName), tsLib.ScriptKind.TS);
+    }
+    function synchronizer(project: tsLib.server.Project) {
+        let fn = function (file: string) {
+            debugger;
+            if (!has(file)) {
+                const info = project.getScriptInfo(file);
+                if (info) {
+                    const content = reload(toTsFile(file), info.getSnapshot().getText(0, info.getSnapshot().getLength()));
+                    (project.projectService as any).applyChangesInOpenFiles(arrayIterator([{
+                        fileName: toTsFile(file),
+                        content: content,
+                        hasMixedContent: false,
+                        projectRootPath: project.getCurrentDirectory(),
+                        scriptKind: tsLib.ScriptKind.TS
+                    }]));
+                }
+            }
+            fn = () => { };
+        }
+        return function (file: string) {
+            fn(file);
+        }
+    }
+    function toTsFile(fileName: string) {
+        return fileName + '.temp.ts';
+    }
     function originatingFileName(fileName: string) {
         return fileName;
     }
@@ -75,7 +80,7 @@ function createUtilsInternal(sys: typeof tsLib.sys): Utils {
         return !!vueFiles[fileName];
     }
     function applyTextChange(fileName: string, change: TextChange) {
-        reload(fileName, sliceTextChange(vueFiles[fileName].content, change));
+        open(fileName, sliceTextChange(vueFiles[fileName].content, change));
     }
     function update(fileName: string, changes: TextChange | Iterator<TextChange>) {
         if (isIterator(changes)) {
@@ -87,19 +92,31 @@ function createUtilsInternal(sys: typeof tsLib.sys): Utils {
     function updateFromIterator(this: string, change: TextChange) {
         applyTextChange(this, change);
     }
-    function reload(fileName: string, content: string) {
-        return (vueFiles[fileName] = Object.assign(parse(content), {
-            lines: null,
-            startLine: null
-        })).content;
-    }
-    function open(fileName: string, content: string = '') {
-        if (vueFiles[fileName]) {
-            debugger;
-            log(`should not re open file "${fileName}"`);
+    function open(fileName: string, content: string, kind: tsLib.ScriptKind) {
+        if (kind === tsLib.ScriptKind.TS) {
+            return (vueFiles[fileName] = Object.assign(parse(content), {
+                lines: null,
+                startLine: null,
+                isOpen: true
+
+            })).content;
         }
-        return reload(fileName, content);
+        return (vueFiles[fileName] = {
+            content,
+            end: content.length,
+            isOpen: true,
+            lines: null,
+            startLine: null,
+            start: 0
+        }).content;
     }
+    // function open(fileName: string, content: string = '') {
+    //     if (vueFiles[fileName]) {
+    //         debugger;
+    //         log(`should not re open file "${fileName}"`);
+    //     }
+    //     return reload(fileName, content);
+    // }
     function close(fileName: string) {
         if (!vueFiles[fileName]) {
             debugger;
@@ -153,7 +170,7 @@ function createUtilsInternal(sys: typeof tsLib.sys): Utils {
         if (positive) {
             return info.start + position;
         } else {
-            return position;
+            return position - info.start;
         }
     }
 
@@ -168,10 +185,52 @@ function createUtilsInternal(sys: typeof tsLib.sys): Utils {
         }
 
 
-        reload(fileName, readFileSync(fileName, 'utf8'));
+        open(fileName, readFileSync(fileName, 'utf8'), 0);
         return vueFiles[fileName];
     }
 }
+
+type Info = {
+    start: number;
+    end: number;
+    content: string;
+    startLine: number | null;
+    lines: number[] | null;
+    isOpen: boolean;
+}
+
+type TsInfo = {
+    originatedFile: VueInfo;
+} & Info;
+
+type VueInfo = {
+    originatingFile: TsInfo;
+} & Info;
+
+function greaterThan(this: number, val: number) {
+    return this < val;
+}
+function checkBounds(diff: number, val: number) {
+    return val < 0 || val >= diff;
+}
+const vueExt = '.vue';
+const vueFiles: Record<string, Info> = Object.create(null);
+function isIterator(val: any): val is Iterator<any> {
+    return val && typeof val.next === 'function';
+}
+function tapIterator<T>(iter: Iterator<any>, mapper: (this: T, val: any) => void, thisArgs: T = null as any): () => IteratorResult<any> {
+    return function () {
+        const cur = iter.next();
+        if (!cur.done) {
+            mapper.call(thisArgs, cur.value);
+        }
+        return cur;
+    }
+}
+const patched = Symbol('patched');
+
+type ArrayIterator<T> = (array: ReadonlyArray<T>) => Iterator<T>;
+
 
 function sliceTextChange(content: string, change: TextChange) {
     return `${content.slice(0, change.span.start)}${change.newText}${content.slice(0, change.span.start + change.span.length)}`;
