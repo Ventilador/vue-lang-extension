@@ -1,5 +1,4 @@
 import ConfigPlugin from '@ts-extras/plugin';
-debugger;
 export = ConfigPlugin({
     extension: '.vue',
     parse: function (_from, content) {
